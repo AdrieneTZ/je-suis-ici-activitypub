@@ -29,4 +29,19 @@ func main() {
 	defer database.Close()
 
 	fmt.Println("FINALLY success connect to database!!!")
+
+	// execute database migrations
+	err = db.ExecuteMigrations(db.Config{
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.DBName,
+		SSLMode:  cfg.Database.SSLMode,
+	})
+	if err != nil {
+		log.Fatalf("fail to execute database migrations: %w", err)
+	}
+
+	fmt.Println("success execute database migrations!!!")
 }

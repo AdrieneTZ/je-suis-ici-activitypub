@@ -1,10 +1,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/go-chi/jwtauth/v5"
+	"je-suis-ici-activitypub/internal/api"
 	"je-suis-ici-activitypub/internal/config"
 	"je-suis-ici-activitypub/internal/db"
+	"je-suis-ici-activitypub/internal/db/models"
+	"je-suis-ici-activitypub/internal/services/activitypub"
+	"je-suis-ici-activitypub/internal/services/user"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -44,4 +55,64 @@ func main() {
 	}
 
 	fmt.Println("success execute database migrations!!!")
+
+	// init repositories
+	userRepo := models.NewUserRepository(database.Pool)
+
+	// init services
+	actorService := activitypub.NewActorService(userRepo)
+	userService := user.NewUserService(userRepo, actorService)
+
+	// init JWT auth
+	tokenAuth := jwtauth.New("HS256", []byte(cfg.JWT.Secret), nil)
+
+	// init router
+	router := api.NewRouter(
+		userService,
+		tokenAuth,
+		cfg.Server.Host,
+	)
+
+	// create HTTP server
+	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           router,
+		ReadTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    0,
+	}
+
+	// use channel to get operation signal
+	signalChan := make(chan os.Signal, 1)
+	// get specific signal
+	// os.Interrupt: interrupt by Ctrl+C, syscall.SIGINT: interrupt by syscall, syscall.SIGTERM: request to terminate server)
+	// any signal above will be sent to signalChan
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// start app server
+	go func() {
+		fmt.Println("start server")
+		err := server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("fail to start server: %w", err)
+		}
+	}()
+
+	// get signal to shut down server
+	<-signalChan
+	fmt.Println("server is shutting down")
+
+	// setup timeout to control shutting down server
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// shut down server
+	err = server.Shutdown(ctx)
+	if err != nil {
+		log.Fatalf("fail to shut down server: %w", err)
+	}
+
+	fmt.Println("server is shut down!")
 }

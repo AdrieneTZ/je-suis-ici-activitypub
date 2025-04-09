@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Database DatabaseConfig
 	Server   ServerConfig
+	JWT      JWTConfig
 }
 
 type ServerConfig struct {
@@ -22,6 +23,10 @@ type DatabaseConfig struct {
 	Password string
 	DBName   string
 	SSLMode  string
+}
+
+type JWTConfig struct {
+	Secret string
 }
 
 // LoadConfig get variables from .env and load
@@ -51,7 +56,10 @@ func LoadConfig() (*Config, error) {
 			Password: viper.GetString("DB_PASSWORD"),
 			DBName:   viper.GetString("DB_NAME"),
 			SSLMode:  viper.GetString("DB_SSL_MODE"),
-		}}, nil
+		},
+		JWT: JWTConfig{
+			Secret: viper.GetString("JWT_SECRET")},
+	}, nil
 
 }
 
@@ -68,6 +76,9 @@ func setDefaults() {
 	viper.SetDefault("DB_PASSWORD", "")
 	viper.SetDefault("DB_NAME", "checkin")
 	viper.SetDefault("DB_SSL_MODE", "disable")
+
+	// JWT setup
+	viper.SetDefault("JWT_SECRET", "top-secret")
 }
 
 // GetServerAddress get server host address

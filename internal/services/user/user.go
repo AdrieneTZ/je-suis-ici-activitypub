@@ -11,6 +11,8 @@ import (
 // UserService
 type UserService interface {
 	Register(ctx context.Context, serverHost, username, email, password string) (*models.User, error)
+	Authenticate(ctx context.Context, usernameOrEmail, password string) (*models.User, error)
+	GetByUsername(ctx context.Context, username string) (*models.User, error)
 }
 
 // UserServiceImplement
@@ -62,4 +64,31 @@ func (us *UserServiceImplement) Register(ctx context.Context, serverHost, userna
 	}
 
 	return user, nil
+}
+
+// Authenticate verify user account
+func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmail, password string) (*models.User, error) {
+	var user *models.User
+	var err error
+
+	// get user data by username or by email
+	user, err = us.userRepo.GetByUsername(ctx, usernameOrEmail)
+	if err != nil {
+		user, err = us.userRepo.GetByEmail(ctx, usernameOrEmail)
+		if err != nil {
+			return nil, fmt.Errorf("invalid credentials")
+		}
+	}
+
+	// verify password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		return nil, fmt.Errorf("invalid credentials")
+	}
+
+	return user, nil
+}
+
+func (us *UserServiceImplement) GetByUsername(ctx context.Context, username string) (*models.User, error) {
+	return us.userRepo.GetByUsername(ctx, username)
 }

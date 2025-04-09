@@ -25,6 +25,8 @@ type User struct {
 // UserRepository manipulate user data
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *User) error
+	GetByUsername(ctx context.Context, username string) (*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
 }
 
 // UserRepositoryImplement implement functions in user repository interface
@@ -54,4 +56,44 @@ func (ur *UserRepositoryImplement) CreateUser(ctx context.Context, user *User) e
 	}
 
 	return nil
+}
+
+func (ur *UserRepositoryImplement) GetByUsername(ctx context.Context, username string) (*User, error) {
+	user := &User{}
+	query := `
+	SELECT
+		id, username, display_name, email, password_hash, avatar_url, actor_id, private_key, public_key, created_at, updated_at
+	FROM users
+	WHERE username = $1
+`
+
+	err := ur.pool.QueryRow(ctx, query, username).Scan(
+		&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PasswordHash, &user.AvatarURL, &user.ActorID,
+		&user.PrivateKey, &user.PublicKey, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get user by username: %w", err)
+	}
+
+	return user, nil
+}
+
+func (ur *UserRepositoryImplement) GetByEmail(ctx context.Context, email string) (*User, error) {
+	user := &User{}
+	query := `
+	SELECT
+		id, username, display_name, email, password_hash, avatar_url, actor_id, private_key, public_key, created_at, updated_at
+	FROM users
+	WHERE email = $1
+`
+
+	err := ur.pool.QueryRow(ctx, query, email).Scan(
+		&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PasswordHash, &user.AvatarURL, &user.ActorID,
+		&user.PrivateKey, &user.PublicKey, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get user by email: %w", err)
+	}
+
+	return user, nil
 }

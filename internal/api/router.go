@@ -2,9 +2,11 @@ package api
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
 	"je-suis-ici-activitypub/internal/api/handlers"
+	"je-suis-ici-activitypub/internal/api/middlewares"
 	"je-suis-ici-activitypub/internal/services/user"
 	"net/http"
 )
@@ -15,6 +17,9 @@ func NewRouter(
 	serverHost string,
 ) http.Handler {
 	r := chi.NewRouter()
+
+	// middlewares
+	r.Use(middleware.RequestID)
 
 	// CORS setup
 	r.Use(cors.Handler(cors.Options{
@@ -39,6 +44,8 @@ func NewRouter(
 
 	// protected routes (need JWT token)
 	r.Group(func(r chi.Router) {
+		// auth JWT middleware
+		r.Use(middlewares.AuthJWT(tokenAuth))
 	})
 
 	return r

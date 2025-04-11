@@ -10,6 +10,7 @@ import (
 	"je-suis-ici-activitypub/internal/db/models"
 	"je-suis-ici-activitypub/internal/services/activitypub"
 	"je-suis-ici-activitypub/internal/services/user"
+	"je-suis-ici-activitypub/internal/storage"
 	"log"
 	"net/http"
 	"os"
@@ -55,6 +56,20 @@ func main() {
 	}
 
 	fmt.Println("success execute database migrations!!!")
+
+	// init storage service (MinIO)
+	storageService, err := storage.NewMinioServiceImplement(storage.MinioConfig{
+		Endpoint:  cfg.MinioConfig.Endpoint,
+		AccessKey: cfg.MinioConfig.AccessKey,
+		SecretKey: cfg.MinioConfig.SecretKey,
+		Bucket:    cfg.MinioConfig.Bucket,
+		UseSSL:    cfg.MinioConfig.UseSSL,
+	})
+	if err != nil {
+		log.Fatalf("fail to initialize storage service: %w", err)
+	}
+
+	fmt.Println("success initialize storage service!!!!")
 
 	// init repositories
 	userRepo := models.NewUserRepository(database.Pool)

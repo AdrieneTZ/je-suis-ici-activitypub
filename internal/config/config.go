@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	Database DatabaseConfig
-	Server   ServerConfig
-	JWT      JWTConfig
+	Database    DatabaseConfig
+	Server      ServerConfig
+	MinioConfig MinioConfig
+	JWT         JWTConfig
 }
 
 type ServerConfig struct {
@@ -23,6 +24,14 @@ type DatabaseConfig struct {
 	Password string
 	DBName   string
 	SSLMode  string
+}
+
+type MinioConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    bool
 }
 
 type JWTConfig struct {
@@ -57,6 +66,13 @@ func LoadConfig() (*Config, error) {
 			DBName:   viper.GetString("DB_NAME"),
 			SSLMode:  viper.GetString("DB_SSL_MODE"),
 		},
+		MinioConfig: MinioConfig{
+			Endpoint:  viper.GetString("MINIO_ENDPOINT"),
+			AccessKey: viper.GetString("MINIO_ACCESS_KEY"),
+			SecretKey: viper.GetString("MINIO_SECRET_KEY"),
+			Bucket:    viper.GetString("MINIO_BUCKET"),
+			UseSSL:    viper.GetBool("MINIO_USE_SSL"),
+		},
 		JWT: JWTConfig{
 			Secret: viper.GetString("JWT_SECRET")},
 	}, nil
@@ -76,6 +92,13 @@ func setDefaults() {
 	viper.SetDefault("DB_PASSWORD", "")
 	viper.SetDefault("DB_NAME", "checkin")
 	viper.SetDefault("DB_SSL_MODE", "disable")
+
+	// storage default setup
+	viper.SetDefault("MINIO_ENDPOINT", "minio:9000")
+	viper.SetDefault("MINIO_ACCESS_KEY", "minioadmin")
+	viper.SetDefault("MINIO_SECRET_KEY", "minioadminpassword")
+	viper.SetDefault("MINIO_BUCKET", "checkin-media")
+	viper.SetDefault("MINIO_USE_SSL", false)
 
 	// JWT setup
 	viper.SetDefault("JWT_SECRET", "top-secret")

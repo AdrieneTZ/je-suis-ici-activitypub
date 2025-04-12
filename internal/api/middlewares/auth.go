@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"github.com/go-chi/jwtauth/v5"
 	"net/http"
 )
@@ -12,9 +13,26 @@ func AuthJWT(tokenAuth *jwtauth.JWTAuth) func(handler http.Handler) http.Handler
 		verifier := jwtauth.Verifier(tokenAuth)
 
 		// step2. verify user identity
-		authenticator := jwtauth.Authenticator(tokenAuth)
+		authenticator := func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				token, _, err := jwtauth.FromContext(r.Context())
+
+				if err != nil {
+					http.Error(w, fmt.Sprintf("fail to extract JWT token from context: %v", err), http.StatusUnauthorized)
+					return
+				}
+
+				if token == nil {
+					http.Error(w, "invalid or missing token", http.StatusUnauthorized)
+					return
+				}
+
+				// Token is valid, proceed
+				next.ServeHTTP(w, r)
+			})
+		}
 
 		// step3. combine verify
-		return authenticator(verifier(next))
+		return verifier(authenticator(next))
 	}
 }

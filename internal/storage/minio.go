@@ -1,10 +1,14 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"net/url"
+	"time"
 )
 
 // define file type
@@ -22,7 +26,10 @@ type MinioConfig struct {
 }
 
 // MinioService
-type MinioService interface{}
+type MinioService interface {
+	UploadFile(ctx context.Context, fileData []byte, fileType, contentType string) (string, error)
+	GetFileURL(ctx context.Context, fileName string) (string, error)
+}
 
 // MinioServiceImplement
 type MinioServiceImplement struct {
@@ -81,4 +88,53 @@ func NewMinioServiceImplement(minCfg MinioConfig) (*MinioServiceImplement, error
 		endpoint:   minCfg.Endpoint,
 		publicURLs: true,
 	}, nil
+}
+
+// UploadFile
+func (mis *MinioServiceImplement) UploadFile(ctx context.Context, fileData []byte, fileType, contentType string) (string, error) {
+	// generate unique file path (but not absolute path, it's also file name)
+	filePath := fmt.Sprintf("%s/%s%s", fileType, uuid.New().String(), getExtension(contentType))
+
+	// upload file
+	_, err := mis.client.PutObject(ctx, mis.bucket, filePath, bytes.NewReader(fileData), int64(len(fileData)), minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		return "", fmt.Errorf("fail to upload file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+// GetFileURL return public file URL
+func (mis *MinioServiceImplement) GetFileURL(ctx context.Context, filePath string) (string, error) {
+	if mis.publicURLs {
+		// use presigned URL to allow temporarily access
+		reqParams := make(url.Values)
+		presignedURL, err := mis.client.PresignedGetObject(ctx, mis.bucket, filePath, time.Hour*24, reqParams)
+		if err != nil {
+			return "", fmt.Errorf("fail to generate presigned URL: %w", err)
+		}
+
+		return presignedURL.String(), nil
+	}
+
+	directFileURL := fmt.Sprintf("http://%s/%s/%s", mis.endpoint, mis.bucket, filePath)
+	return directFileURL, nil
+}
+
+// getExtension return file type based on contentType
+func getExtension(contentType string) string {
+	switch contentType {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	default:
+		return ".bin"
+	}
 }

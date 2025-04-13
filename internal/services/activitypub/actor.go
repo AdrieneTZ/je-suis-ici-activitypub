@@ -13,6 +13,7 @@ import (
 type ActorService interface {
 	GenerateKeyPair() (string, string, error)
 	GenerateActorID(serverHost, username string) string
+	//CreateActor(ctx context.Context, user *models.User, serverHost string) error
 }
 
 type ActorServiceImplement struct {
@@ -62,3 +63,25 @@ func (as *ActorServiceImplement) GenerateActorID(serverHost, username string) st
 
 	return actorId
 }
+
+// CreateActor create user's ActivityPub Actor
+//func (as *ActorServiceImplement) CreateActor(ctx context.Context, user *models.User, serverHost string) error {
+//	// generate private and public key pair
+//	privateKey, publicKey, err := as.GenerateKeyPair()
+//	if err != nil {
+//		return fmt.Errorf("fail to generate private and public key pair: %w", err)
+//	}
+//
+//	// encode username to make sure username is safe
+//	safeUsername := url.PathEscape(user.Username)
+//
+//	// set actor id
+//	if user.ActorID == "" {
+//		user.ActorID = fmt.Sprintf("https://%s/users/%s", serverHost, safeUsername)
+//	}
+//
+//	user.PrivateKey = privateKey
+//	user.PublicKey = publicKey
+//
+//	return as.userRepo.Update(ctx, user)
+//}

@@ -5,3 +5,5 @@
 cmd/server/node1/
 cmd/server/node2/
 cmd/server/node3/
+
+.DS_Store

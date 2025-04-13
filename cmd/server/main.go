@@ -8,6 +8,7 @@ import (
 	"je-suis-ici-activitypub/internal/config"
 	"je-suis-ici-activitypub/internal/db"
 	"je-suis-ici-activitypub/internal/db/models"
+	"je-suis-ici-activitypub/internal/services"
 	"je-suis-ici-activitypub/internal/services/activitypub"
 	"je-suis-ici-activitypub/internal/services/user"
 	"je-suis-ici-activitypub/internal/storage"
@@ -73,10 +74,14 @@ func main() {
 
 	// init repositories
 	userRepo := models.NewUserRepository(database.Pool)
+	checkinRepo := models.NewCheckinRepository(database.Pool)
+	mediaRepo := models.NewMediaRepository(database.Pool)
 
 	// init services
 	actorService := activitypub.NewActorService(userRepo)
 	userService := user.NewUserService(userRepo, actorService)
+	checkinService := services.NewCheckinService(checkinRepo, mediaRepo, storageService)
+	mediaService := services.NewMediaService(mediaRepo, storageService)
 
 	// init JWT auth
 	tokenAuth := jwtauth.New("HS256", []byte(cfg.JWT.Secret), nil)
@@ -84,6 +89,8 @@ func main() {
 	// init router
 	router := api.NewRouter(
 		userService,
+		checkinService,
+		mediaService,
 		tokenAuth,
 		cfg.Server.Host,
 	)
@@ -102,7 +109,7 @@ func main() {
 	// use channel to get operation signal
 	signalChan := make(chan os.Signal, 1)
 	// get specific signal
-	// os.Interrupt: interrupt by Ctrl+C, syscall.SIGINT: interrupt by syscall, syscall.SIGTERM: request to terminate server)
+	// os.Interrupt: interrupt by Ctrl+C, syscall.SIGINT: interrupt by syscall, syscall.SIGTERM: request to terminate server
 	// any signal above will be sent to signalChan
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 

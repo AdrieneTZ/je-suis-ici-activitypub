@@ -1,18 +1,18 @@
-package user
+package services
 
 import (
 	"context"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/db/models"
-	"je-suis-ici-activitypub/internal/services/activitypub"
 )
 
 // UserService
 type UserService interface {
 	Register(ctx context.Context, serverHost, username, email, password string) (*models.User, error)
 	Authenticate(ctx context.Context, usernameOrEmail, password string) (*models.User, error)
-	GetByUsername(ctx context.Context, username string) (*models.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 }
 
 // UserServiceImplement
@@ -89,6 +89,6 @@ func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmai
 	return user, nil
 }
 
-func (us *UserServiceImplement) GetByUsername(ctx context.Context, username string) (*models.User, error) {
+func (us *UserServiceImplement) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	return us.userRepo.GetByUsername(ctx, username)
 }

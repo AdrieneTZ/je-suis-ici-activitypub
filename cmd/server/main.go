@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-chi/jwtauth/v5"
+	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/api"
 	"je-suis-ici-activitypub/internal/config"
 	"je-suis-ici-activitypub/internal/db"
 	"je-suis-ici-activitypub/internal/db/models"
 	"je-suis-ici-activitypub/internal/services"
-	"je-suis-ici-activitypub/internal/services/activitypub"
-	"je-suis-ici-activitypub/internal/services/user"
 	"je-suis-ici-activitypub/internal/storage"
 	"log"
 	"net/http"
@@ -76,12 +75,24 @@ func main() {
 	userRepo := models.NewUserRepository(database.Pool)
 	checkinRepo := models.NewCheckinRepository(database.Pool)
 	mediaRepo := models.NewMediaRepository(database.Pool)
+	activityRepo := activitypub.NewActivityPubRepository(database.Pool)
 
 	// init services
 	actorService := activitypub.NewActorService(userRepo)
-	userService := user.NewUserService(userRepo, actorService)
+	userService := services.NewUserService(userRepo, actorService)
 	checkinService := services.NewCheckinService(checkinRepo, mediaRepo, storageService)
 	mediaService := services.NewMediaService(mediaRepo, storageService)
+
+	// init ActivityPub services
+	apClientService := activitypub.NewActivityPubClientService(nil)
+	apServerService := activitypub.NewActivityPubServerService(
+		activityRepo,
+		userRepo,
+		checkinRepo,
+		actorService,
+		apClientService,
+		cfg.Server.Host,
+	)
 
 	// init JWT auth
 	tokenAuth := jwtauth.New("HS256", []byte(cfg.JWT.Secret), nil)
@@ -91,6 +102,8 @@ func main() {
 		userService,
 		checkinService,
 		mediaService,
+		apServerService,
+		actorService,
 		tokenAuth,
 		cfg.Server.Host,
 	)

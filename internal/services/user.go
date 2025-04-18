@@ -3,16 +3,21 @@ package services
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/db/models"
+	"time"
 )
 
 // UserService
 type UserService interface {
 	Register(ctx context.Context, serverHost, username, email, password string) (*models.User, error)
 	Authenticate(ctx context.Context, usernameOrEmail, password string) (*models.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+	UpdateUser(ctx context.Context, user *models.User) error
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
 
 // UserServiceImplement
@@ -89,6 +94,35 @@ func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmai
 	return user, nil
 }
 
+// GetUserByID
+func (us *UserServiceImplement) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return us.userRepo.GetByID(ctx, id)
+}
+
+// GetUserByUsername
 func (us *UserServiceImplement) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	return us.userRepo.GetByUsername(ctx, username)
+}
+
+// UpdateUser
+func (us *UserServiceImplement) UpdateUser(ctx context.Context, user *models.User) error {
+	if user == nil {
+		return fmt.Errorf("invalid user input")
+	}
+	if user.ID == uuid.Nil {
+		return fmt.Errorf("invalid user input")
+	}
+
+	user.UpdatedAt = time.Now()
+
+	return us.userRepo.UpdateUser(ctx, user)
+}
+
+// DeleteUser
+func (us *UserServiceImplement) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	if id == uuid.Nil {
+		return fmt.Errorf("invalid user input")
+	}
+
+	return us.userRepo.DeleteUser(ctx, id)
 }

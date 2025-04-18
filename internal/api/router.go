@@ -17,6 +17,7 @@ func NewRouter(
 	checkinService services.CheckinService,
 	mediaService services.MediaService,
 	apServerService *activitypub.ActivityPubServerService,
+	actorService activitypub.ActorService,
 	tokenAuth *jwtauth.JWTAuth,
 	serverHost string,
 ) http.Handler {
@@ -40,7 +41,8 @@ func NewRouter(
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(userService, tokenAuth, serverHost)
-	checkinHandler := handlers.NewCheckinHandler(userService, checkinService, mediaService, apServerService, serverHost)
+	userHandler := handlers.NewUserHandler(userService, actorService, *authHandler, serverHost)
+	checkinHandler := handlers.NewCheckinHandler(userService, checkinService, mediaService, apServerService, *authHandler, serverHost)
 	feedHandler := handlers.NewFeedHandler(checkinService)
 
 	// public routes (no need JWT token)
@@ -70,6 +72,9 @@ func NewRouter(
 			r.Use(middlewares.AuthJWT(tokenAuth))
 
 			checkinHandler.RegisterCheckinRoutes(r)
+
+			r.Put("/users/{id}", userHandler.UpdateUser)
+			r.Delete("/users/{id}", userHandler.DeleteUser)
 
 			// activityPub user interaction routes
 			r.Get("/users/{username}/activitypub-info", checkinHandler.GetUserActivityPubInfo)

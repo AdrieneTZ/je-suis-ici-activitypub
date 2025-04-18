@@ -25,8 +25,12 @@ type User struct {
 // UserRepository manipulate user data
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *User) error
+	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByUsername(ctx context.Context, username string) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByActorID(ctx context.Context, actorID string) (*User, error)
+	UpdateUser(ctx context.Context, user *User) error
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
 
 // UserRepositoryImplement implement functions in user repository interface
@@ -58,13 +62,37 @@ func (ur *UserRepositoryImplement) CreateUser(ctx context.Context, user *User) e
 	return nil
 }
 
+func (ur *UserRepositoryImplement) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
+	user := &User{}
+	query := `
+		SELECT
+			id, username, display_name, email, password_hash, avatar_url, actor_id, private_key, public_key, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	err := ur.pool.QueryRow(ctx, query, id).Scan(
+		&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PasswordHash, &user.AvatarURL, &user.ActorID,
+		&user.PrivateKey, &user.PublicKey, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get user by id: %w", err)
+	}
+	// TODO: add handling user not found error
+	//if err.Error() == "no rows in result set" {
+	//	return nil, fmt.Errorf("user not found: %w", err)
+	//}
+
+	return user, nil
+}
+
 func (ur *UserRepositoryImplement) GetByUsername(ctx context.Context, username string) (*User, error) {
 	user := &User{}
 	query := `
-	SELECT
-		id, username, display_name, email, password_hash, avatar_url, actor_id, private_key, public_key, created_at, updated_at
-	FROM users
-	WHERE username = $1
+    SELECT
+        id, username, display_name, email, password_hash, avatar_url, actor_id, private_key, public_key, created_at, updated_at
+    FROM users
+    WHERE username = $1
 `
 
 	err := ur.pool.QueryRow(ctx, query, username).Scan(
@@ -74,6 +102,7 @@ func (ur *UserRepositoryImplement) GetByUsername(ctx context.Context, username s
 	if err != nil {
 		return nil, fmt.Errorf("fail to get user by username: %w", err)
 	}
+	// TODO: add handling user not found error
 
 	return user, nil
 }
@@ -94,6 +123,63 @@ func (ur *UserRepositoryImplement) GetByEmail(ctx context.Context, email string)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get user by email: %w", err)
 	}
+	// TODO: add handling user not found error
 
 	return user, nil
+}
+
+func (ur *UserRepositoryImplement) GetByActorID(ctx context.Context, actorID string) (*User, error) {
+	user := &User{}
+	query := `
+		SELECT id, username, display_name, email, password_hash, avatar_url, actor_id,
+			private_key, public_key, created_at, updated_at
+		FROM users
+		WHERE actor_id = $1
+	`
+
+	err := ur.pool.QueryRow(ctx, query, actorID).Scan(
+		&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PasswordHash, &user.AvatarURL, &user.ActorID,
+		&user.PrivateKey, &user.PublicKey, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("fail to get user by actor id: %w", err)
+	}
+	// TODO: add handling user not found error
+
+	return user, nil
+}
+
+// UpdateUser
+func (ur *UserRepositoryImplement) UpdateUser(ctx context.Context, user *User) error {
+	query := `
+		UPDATE users
+		SET username = $1, display_name = $2, email = $3, avatar_url = $4, actor_id = $5,
+		    private_key = $6, public_key = $7, updated_at = now()
+		WHERE id = $8
+		RETURNING updated_at
+	`
+
+	err := ur.pool.QueryRow(ctx, query,
+		user.Username, user.DisplayName, user.Email, user.AvatarURL, user.ActorID,
+		user.PrivateKey, user.PublicKey, user.ID,
+	).Scan(&user.UpdatedAt)
+
+	if err != nil {
+		return fmt.Errorf("fail to update user: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteUser
+func (ur *UserRepositoryImplement) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM users WHERE id = $1`
+
+	_, err := ur.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("fail to delete user: %w", err)
+	}
+
+	return nil
 }

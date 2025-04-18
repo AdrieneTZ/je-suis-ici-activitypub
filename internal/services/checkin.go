@@ -12,6 +12,8 @@ import (
 type CheckinService interface {
 	CreateCheckin(ctx context.Context, userID uuid.UUID, content, locationName string, latitude, longitude float64, mediaIDs []uuid.UUID, serverHost string) (*models.Checkin, error)
 	GetCheckinByID(ctx context.Context, id uuid.UUID) (*models.Checkin, error)
+	GetCheckinsByUserID(ctx context.Context, userID uuid.UUID, page, pageSize int) ([]models.Checkin, error)
+	GetGlobalFeed(ctx context.Context, page, pageSize int) ([]models.Checkin, error)
 }
 
 // CheckinServiceImplement
@@ -101,4 +103,53 @@ func (cs *CheckinServiceImplement) GetCheckinByID(ctx context.Context, id uuid.U
 	}
 
 	return checkin, nil
+}
+
+// GetCheckinsByUserID
+func (cs *CheckinServiceImplement) GetCheckinsByUserID(ctx context.Context, userID uuid.UUID, page, pageSize int) ([]models.Checkin, error) {
+	// calculate offset
+	offsett := (page - 1) * pageSize
+
+	// get checkins
+	checkins, err := cs.GetCheckinsByUserID(ctx, userID, pageSize, offsett)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get user checkins: %w", err)
+	}
+
+	// generate media file URL for each checkin
+	for i := range checkins {
+		for j := range checkins[i].Media {
+			url, err := cs.minioService.GetFileURL(ctx, checkins[i].Media[j].FilePath)
+			if err == nil {
+				checkins[i].Media[j].URL = url
+			}
+		}
+	}
+
+	return checkins, nil
+}
+
+// GetGlobalFeed
+// TODO: get global feed from other sites based on ActivityPub Protocol
+func (cs *CheckinServiceImplement) GetGlobalFeed(ctx context.Context, page, pageSize int) ([]models.Checkin, error) {
+	// calculate offset
+	offset := (page - 1) * pageSize
+
+	// get global feed from db
+	checkins, err := cs.checkinRepo.GetGlobalFeed(ctx, pageSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get global feed: %w", err)
+	}
+
+	// generate media URL for each checkin
+	for i := range checkins {
+		for j := range checkins[i].Media {
+			url, err := cs.minioService.GetFileURL(ctx, checkins[i].Media[j].FilePath)
+			if err == nil {
+				checkins[i].Media[j].URL = url
+			}
+		}
+	}
+
+	return checkins, nil
 }

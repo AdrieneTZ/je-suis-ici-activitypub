@@ -5,20 +5,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"je-suis-ici-activitypub/internal/db/models"
-	"je-suis-ici-activitypub/internal/services/user"
+	"je-suis-ici-activitypub/internal/services"
 	"net/http"
 	"time"
 )
 
 // AuthHandler handle auth requests
 type AuthHandler struct {
-	userService user.UserService
+	userService services.UserService
 	tokenAuth   *jwtauth.JWTAuth
 	serverHost  string
 }
 
 // NewAuthHandler
-func NewAuthHandler(userService user.UserService, tokenAuth *jwtauth.JWTAuth, serverHost string) *AuthHandler {
+func NewAuthHandler(userService services.UserService, tokenAuth *jwtauth.JWTAuth, serverHost string) *AuthHandler {
 	return &AuthHandler{
 		userService: userService,
 		tokenAuth:   tokenAuth,

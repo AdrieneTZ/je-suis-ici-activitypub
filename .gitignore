@@ -9,3 +9,5 @@ cmd/server/node3/
 .DS_Store
 
 checkin-image
+
+.log

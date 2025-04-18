@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"je-suis-ici-activitypub/internal/db/models"
@@ -102,6 +103,7 @@ func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Login
 func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// parse login request
 	var req LoginRequest
@@ -144,4 +146,22 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Token: tokenString,
 		User:  user,
 	})
+}
+
+// GetUserIDByAuthTokenFromRequest
+// valid user
+// get user id from the request with JWT token
+func (ah *AuthHandler) GetUserIDByAuthTokenFromRequest(r *http.Request) (string, error) {
+	// get JWT token claims (claims is a map)
+	_, claims, err := jwtauth.FromContext(r.Context())
+	if err != nil {
+		return "", fmt.Errorf("unauthorized: %w", err)
+	}
+
+	userID, ok := claims["user_id"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid token")
+	}
+
+	return userID, nil
 }

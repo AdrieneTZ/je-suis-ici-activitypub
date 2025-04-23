@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-chi/jwtauth/v5"
+	"go.uber.org/zap"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/api"
 	"je-suis-ici-activitypub/internal/config"
@@ -20,10 +21,17 @@ import (
 )
 
 func main() {
+	// init logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("fail to initialize logger: %w", err)
+	}
+	defer logger.Sync()
+
 	// load config
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("fail to load config: %w", err)
+		logger.Fatal("fail to load config", zap.Error(err))
 	}
 
 	// init database connection
@@ -36,11 +44,11 @@ func main() {
 		SSLMode:  cfg.Database.SSLMode,
 	})
 	if err != nil {
-		log.Fatalf("fail to connect database: %w", err)
+		logger.Fatal("fail to connect database: %w", zap.Error(err))
 	}
 	defer database.Close()
 
-	fmt.Println("FINALLY success connect to database!!!")
+	logger.Info("success connect to database!!!")
 
 	// execute database migrations
 	err = db.ExecuteMigrations(db.Config{
@@ -52,10 +60,10 @@ func main() {
 		SSLMode:  cfg.Database.SSLMode,
 	})
 	if err != nil {
-		log.Fatalf("fail to execute database migrations: %w", err)
+		logger.Fatal("fail to execute database migrations: %w", zap.Error(err))
 	}
 
-	fmt.Println("success execute database migrations!!!")
+	logger.Info("success execute database migrations!!!")
 
 	// init storage service (MinIO)
 	storageService, err := storage.NewMinioServiceImplement(storage.MinioConfig{
@@ -66,10 +74,10 @@ func main() {
 		UseSSL:    cfg.MinioConfig.UseSSL,
 	})
 	if err != nil {
-		log.Fatalf("fail to initialize storage service: %w", err)
+		logger.Fatal("fail to initialize storage service: %w", zap.Error(err))
 	}
 
-	fmt.Println("success initialize storage service!!!!")
+	logger.Info("success initialize storage service!!!!")
 
 	// init repositories
 	userRepo := models.NewUserRepository(database.Pool)
@@ -99,6 +107,7 @@ func main() {
 
 	// init router
 	router := api.NewRouter(
+		logger,
 		userService,
 		checkinService,
 		mediaService,
@@ -131,13 +140,13 @@ func main() {
 		fmt.Println("start server")
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			log.Fatalf("fail to start server: %w", err)
+			logger.Fatal("fail to start server: %w", zap.Error(err))
 		}
 	}()
 
 	// get signal to shut down server
 	<-signalChan
-	fmt.Println("server is shutting down")
+	logger.Info("server is shutting down")
 
 	// setup timeout to control shutting down server
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -146,8 +155,8 @@ func main() {
 	// shut down server
 	err = server.Shutdown(ctx)
 	if err != nil {
-		log.Fatalf("fail to shut down server: %w", err)
+		logger.Fatal("server force to shutdown", zap.Error(err))
 	}
 
-	fmt.Println("server is shut down!")
+	logger.Info("server is shut down!")
 }

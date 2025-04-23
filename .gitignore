@@ -1,13 +1,19 @@
+# env files
 .env
 
+# IDE files
 .idea/
 
+#cockroachdb files
 cmd/server/node1/
 cmd/server/node2/
 cmd/server/node3/
 
+# os files
 .DS_Store
 
+# temp files
 checkin-image
 
-.log
+# logger
+*.log

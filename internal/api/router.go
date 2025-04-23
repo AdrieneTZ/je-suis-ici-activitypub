@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/jwtauth/v5"
+	"go.uber.org/zap"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/api/handlers"
 	"je-suis-ici-activitypub/internal/api/middlewares"
@@ -13,6 +14,7 @@ import (
 )
 
 func NewRouter(
+	logger *zap.Logger,
 	userService services.UserService,
 	checkinService services.CheckinService,
 	mediaService services.MediaService,
@@ -25,8 +27,9 @@ func NewRouter(
 
 	// middlewares
 	r.Use(middleware.RequestID)
-	//r.Use(middleware.RealIP)
-	//r.Use(middleware.Recoverer)
+	r.Use(middleware.RealIP)
+	r.Use(middlewares.Logger(logger))
+	r.Use(middleware.Recoverer)
 	//r.Use(middleware.Timeout(60))
 
 	// CORS setup

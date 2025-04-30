@@ -87,9 +87,9 @@ type Activity struct {
 	Result    interface{} `json:"result,omitempty"`
 	Origin    string      `json:"origin,omitempty"`
 	To        []string    `json:"to,omitempty"`
-	Cc        []string    `json:"cc,omitempty"`
-	Bto       []string    `json:"bto,omitempty"`
-	Bcc       []string    `json:"bcc,omitempty"`
+	Cc        []string    `json:"cc,omitempty"`  // Carbon Copy
+	Bto       []string    `json:"bto,omitempty"` // Blind To
+	Bcc       []string    `json:"bcc,omitempty"` // Blind Carbon Copy
 	Published time.Time   `json:"published,omitempty"`
 	Updated   time.Time   `json:"updated,omitempty"`
 }
@@ -173,7 +173,6 @@ type Person struct {
 	Type              string    `json:"type"`
 	Name              string    `json:"name,omitempty"`
 	PreferredUsername string    `json:"preferredUsername"`
-	Summary           string    `json:"summary,omitempty"`
 	Inbox             string    `json:"inbox"`
 	Outbox            string    `json:"outbox"`
 	Following         string    `json:"following,omitempty"`

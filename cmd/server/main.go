@@ -84,6 +84,7 @@ func main() {
 	checkinRepo := models.NewCheckinRepository(database.Pool)
 	mediaRepo := models.NewMediaRepository(database.Pool)
 	activityRepo := activitypub.NewActivityPubRepository(database.Pool)
+	followerRepo := activitypub.NewFollowerRepository(database.Pool)
 
 	// init services
 	actorService := activitypub.NewActorService(userRepo)
@@ -95,6 +96,7 @@ func main() {
 	apClientService := activitypub.NewActivityPubClientService(nil)
 	apServerService := activitypub.NewActivityPubServerService(
 		activityRepo,
+		followerRepo,
 		userRepo,
 		checkinRepo,
 		actorService,

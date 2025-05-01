@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/spf13/viper"
 )
 
@@ -10,6 +11,7 @@ type Config struct {
 	Server      ServerConfig
 	MinioConfig MinioConfig
 	JWT         JWTConfig
+	Jaeger      JaegerConfig `mapstructure:"jaeger"`
 }
 
 type ServerConfig struct {
@@ -36,6 +38,13 @@ type MinioConfig struct {
 
 type JWTConfig struct {
 	Secret string
+}
+
+type JaegerConfig struct {
+	URL         string `mapstructure:"url"`
+	ServiceName string `mapstructure:"service_name"`
+	Environment string `mapstructure:"environment"`
+	Enable      bool   `mapstructure:"enable"`
 }
 
 // LoadConfig get variables from .env and load
@@ -74,9 +83,15 @@ func LoadConfig() (*Config, error) {
 			UseSSL:    viper.GetBool("MINIO_USE_SSL"),
 		},
 		JWT: JWTConfig{
-			Secret: viper.GetString("JWT_SECRET")},
+			Secret: viper.GetString("JWT_SECRET"),
+		},
+		Jaeger: JaegerConfig{
+			URL:         viper.GetString("JAEGER_URL"),
+			ServiceName: viper.GetString("JAEGER_SERVICE_NAME"),
+			Environment: viper.GetString("JAEGER_ENVIRONMENT"),
+			Enable:      viper.GetBool("JAEGER_ENABLE"),
+		},
 	}, nil
-
 }
 
 // setDefaults set default env values
@@ -102,6 +117,12 @@ func setDefaults() {
 
 	// JWT setup
 	viper.SetDefault("JWT_SECRET", "top-secret")
+
+	// Jaeger setup
+	viper.SetDefault("JAEGER_URL", "http://localhost:14268/api/traces")
+	viper.SetDefault("JAEGER_SERVICE_NAME", "checkin-service")
+	viper.SetDefault("JAEGER_ENVIRONMENT", "development")
+	viper.SetDefault("JAEGER_ENABLE", true)
 }
 
 // GetServerAddress get server host address

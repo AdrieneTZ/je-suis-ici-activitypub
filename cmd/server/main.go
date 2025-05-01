@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/go-chi/jwtauth/v5"
-	"go.uber.org/zap"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/api"
 	"je-suis-ici-activitypub/internal/config"
@@ -12,12 +10,16 @@ import (
 	"je-suis-ici-activitypub/internal/db/models"
 	"je-suis-ici-activitypub/internal/services"
 	"je-suis-ici-activitypub/internal/storage"
+	"je-suis-ici-activitypub/internal/tracing"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/go-chi/jwtauth/v5"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -32,6 +34,27 @@ func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Fatal("fail to load config", zap.Error(err))
+	}
+
+	// init jaeger tracer
+	if cfg.Jaeger.Enable {
+		tp, err := tracing.InitJaeger(&cfg.Jaeger)
+		if err != nil {
+			logger.Fatal("fail to init jaeger tracer: %w", zap.Error(err))
+		}
+
+		// tp is not nil means tracer is enabled
+		if tp != nil {
+			// when main function is closed, shutdown jaeger tracer provider
+			defer func() {
+				err := tp.Shutdown(context.Background())
+				if err != nil {
+					logger.Error("fail to shutdown jaeger tracer provider: %w", zap.Error(err))
+				}
+			}()
+		}
+
+		logger.Info("success init jaeger tracer!!!")
 	}
 
 	// init database connection

@@ -3,9 +3,10 @@ package services
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"je-suis-ici-activitypub/internal/db/models"
 	"je-suis-ici-activitypub/internal/storage"
+
+	"github.com/google/uuid"
 )
 
 // CheckinService
@@ -111,7 +112,7 @@ func (cs *CheckinServiceImplement) GetCheckinsByUserID(ctx context.Context, user
 	offsett := (page - 1) * pageSize
 
 	// get checkins
-	checkins, err := cs.GetCheckinsByUserID(ctx, userID, pageSize, offsett)
+	checkins, err := cs.checkinRepo.GetCheckinsByUserID(ctx, userID, pageSize, offsett)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get user checkins: %w", err)
 	}

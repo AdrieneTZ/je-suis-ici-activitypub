@@ -1,16 +1,17 @@
 package api
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/go-chi/jwtauth/v5"
-	"go.uber.org/zap"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/api/handlers"
 	"je-suis-ici-activitypub/internal/api/middlewares"
 	"je-suis-ici-activitypub/internal/services"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/go-chi/jwtauth/v5"
+	"go.uber.org/zap"
 )
 
 func NewRouter(

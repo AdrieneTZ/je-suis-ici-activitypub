@@ -3,12 +3,18 @@ package services
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"je-suis-ici-activitypub/internal/activitypub"
 	"je-suis-ici-activitypub/internal/db/models"
 	"time"
+
+	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var tracer = otel.Tracer("services/user")
 
 // UserService
 type UserService interface {
@@ -36,9 +42,25 @@ func NewUserService(userRepo models.UserRepository, actorService activitypub.Act
 
 // Register user register an account
 func (us *UserServiceImplement) Register(ctx context.Context, serverHost, username, email, password string) (*models.User, error) {
+	// add child tracer
+	ctx, span := tracer.Start(ctx, "Register")
+	defer span.End()
+
+	// record input attributes
+	span.SetAttributes(
+		attribute.String("username", username),
+		attribute.String("email", email),
+	)
+
 	// hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "hash_password_error"),
+			attribute.String("error.message", err.Error()),
+		)
+
 		return nil, fmt.Errorf("fail to hash password: %w", err)
 	}
 
@@ -48,6 +70,12 @@ func (us *UserServiceImplement) Register(ctx context.Context, serverHost, userna
 	// generate private and public key pair
 	privateKey, publicKey, err := us.actorService.GenerateKeyPair()
 	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "generate_key_pair_error"),
+			attribute.String("error.message", err.Error()),
+		)
+
 		return nil, err
 	}
 
@@ -65,6 +93,12 @@ func (us *UserServiceImplement) Register(ctx context.Context, serverHost, userna
 	// create user's account
 	err = us.userRepo.CreateUser(ctx, user)
 	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "create_user_account_error"),
+			attribute.String("error.message", err.Error()),
+		)
+
 		return nil, err
 	}
 
@@ -73,6 +107,13 @@ func (us *UserServiceImplement) Register(ctx context.Context, serverHost, userna
 
 // Authenticate verify user account
 func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmail, password string) (*models.User, error) {
+	// add child tracer
+	ctx, span := tracer.Start(ctx, "Authenticate")
+	defer span.End()
+
+	// record input attributes
+	span.SetAttributes(attribute.String("username or email", usernameOrEmail))
+
 	var user *models.User
 	var err error
 
@@ -81,6 +122,13 @@ func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmai
 	if err != nil {
 		user, err = us.userRepo.GetByEmail(ctx, usernameOrEmail)
 		if err != nil {
+			span.RecordError(err)
+			span.SetAttributes(
+				attribute.String("error.type", "get_user_by_username_or_email_error"),
+				attribute.String("error.message", err.Error()),
+			)
+			span.SetStatus(codes.Error, "authentication failed")
+
 			return nil, fmt.Errorf("invalid credentials")
 		}
 	}
@@ -88,20 +136,79 @@ func (us *UserServiceImplement) Authenticate(ctx context.Context, usernameOrEmai
 	// verify password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "compare_password_error"),
+			attribute.String("error.message", err.Error()),
+		)
+
 		return nil, fmt.Errorf("invalid credentials")
 	}
+
+	// record output attributes
+	span.SetAttributes(
+		attribute.String("user.id", user.ID.String()),
+	)
 
 	return user, nil
 }
 
 // GetUserByID
 func (us *UserServiceImplement) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	return us.userRepo.GetByID(ctx, id)
+	// add child tracer
+	ctx, span := tracer.Start(ctx, "GetUserByID")
+	defer span.End()
+
+	// record input attributes
+	span.SetAttributes(attribute.String("userID", id.String()))
+
+	user, err := us.userRepo.GetByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "get_user_by_id_error"),
+			attribute.String("error.message", err.Error()),
+		)
+		span.SetStatus(codes.Error, "fail to get user by id")
+
+		return nil, err
+	}
+
+	// record output attributes
+	if user != nil {
+		span.SetAttributes(attribute.String("user.id", user.ID.String()))
+	}
+
+	return user, nil
 }
 
 // GetUserByUsername
 func (us *UserServiceImplement) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
-	return us.userRepo.GetByUsername(ctx, username)
+	// add child tracer
+	ctx, span := tracer.Start(ctx, "GetUserByUsername")
+	defer span.End()
+
+	// record input attributes
+	span.SetAttributes(attribute.String("username", username))
+
+	user, err := us.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		span.RecordError(err)
+		span.SetAttributes(
+			attribute.String("error.type", "get_user_by_username_error"),
+			attribute.String("error.message", err.Error()),
+		)
+		span.SetStatus(codes.Error, "fail to get user by username")
+
+		return nil, err
+	}
+
+	// record output attributes
+	if user != nil {
+		span.SetAttributes(attribute.String("user.id", user.ID.String()))
+	}
+
+	return user, nil
 }
 
 // UpdateUser
